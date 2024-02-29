@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Административная панель</title>
+    <!-- Подключение Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Административная панель</h2>
+        <div class="my-4">
+            <button class="btn btn-primary" onclick="window.location.href='/add-user'">Добавить пользователя</button>
+        </div>
+        <!-- Форма для добавления нового поста -->
+        <h3>Добавить новый пост</h3>
+        <form action="/add-post" method="POST">
+            <div class="form-group">
+                <label for="postTitle">Заголовок поста</label>
+                <input type="text" class="form-control" id="postTitle" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="postContent">Содержание поста</label>
+                <textarea class="form-control" id="postContent" name="content" rows="3" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-success">Добавить пост</button>
+        </form>
+
+        <h3 class="mt-5">Список постов</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Заголовок</th>
+                    <th scope="col">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% posts.forEach(function(post, index) { %>
+                    <tr>
+                        <th scope="row"><%= index + 1 %></th>
+                        <td><%= post.title %></td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="window.location.href='/delete-post/<%= post._id %>'">Удалить</button>
+                        </td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Подключение Bootstrap JS и зависимостей -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

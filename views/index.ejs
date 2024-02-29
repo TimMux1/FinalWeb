@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Форум Крипто-Специалистов</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+            .admin-posts, .user-posts, .api-section { margin-bottom: 30px; }
+            .post-actions { display: flex; justify-content: flex-end; }
+            .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgb(0,0,0); background-color: rgba(0,0,0,0.4); padding-top: 60px; }
+            .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; }
+            .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+            .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+            .add-post-button { margin: 20px 0; display: flex; justify-content: flex-end; }
+            .chart-container { display: flex; justify-content: center; flex-wrap: wrap; }
+            .crypto-chart { width: 100%; max-width: 450px; height: 300px; margin: 0 auto; } /* Изменённые размеры */
+            .news-container img.card-img-top {
+        height: 300px; /* Вы можете настроить это значение */
+        object-fit: cover;
+        width: 50%;
+    }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="/">Форум Крипто-Специалистов</a>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+                <% if (!user) { %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">Вход</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register">Регистрация</a>
+                    </li>
+                <% } else { %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/profile">Профиль</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">Выход</a>
+                    </li>
+                <% } %>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <% if (user) { %>
+            <div class="add-post-button">
+                <button class="btn btn-success" onclick="showAddPostModal()">Добавить пост</button>
+            </div>
+        <% } %>
+        <div class="admin-posts">
+            <h2>Посты Администратора</h2>
+            <% posts.forEach(function(post) { %>
+                <% if (post.isAdminPost) { %>
+                    <div class="card mb-3" id="post-<%= post._id %>">
+                        <div class="card-body">
+                            <h5 class="card-title"><%= post.title %> <% if (post.author) { %><small>by <%= post.author %></small><% } %></h5>
+                            <p class="card-text"><%= post.content %></p>
+                            <% if (isAdmin) { %>
+                                <div class="post-actions">
+                                    <button type="button" class="btn btn-primary" onclick="showEditPostModal('<%= post._id %>', '<%= post.title %>', '<%= post.content %>')">Редактировать</button>
+                                    <form action="/delete-post/<%= post._id %>" method="post" style="display: inline;">
+                                        <button type="submit" class="btn btn-danger">Удалить</button>
+                                    </form>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                <% } %>
+            <% }); %>
+        </div>
+        <div class="user-posts">
+            <h2>Посты Пользователей</h2>
+            <% posts.forEach(function(post) { %>
+                <% if (!post.isAdminPost) { %>
+                    <div class="card mb-3" id="post-<%= post._id %>">
+                        <div class="card-body">
+                            <h5 class="card-title"><%= post.title %> <% if (post.author) { %><small>by <%= post.author %></small><% } %></h5>
+                            <p class="card-text"><%= post.content %></p>
+                            <% if (user && (user === post.author || isAdmin)) { %>
+                                <div class="post-actions">
+                                    <button type="button" class="btn btn-primary" onclick="showEditPostModal('<%= post._id %>', '<%= post.title %>', '<%= post.content %>')">Редактировать</button>
+                                    <form action="/delete-post/<%= post._id %>" method="post" style="display: inline;">
+                                        <button type="submit" class="btn btn-danger">Удалить</button>
+                                    </form>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                <% } %>
+            <% }); %>
+        </div>
+    </div>
+    
+    <div id="addPostModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('addPostModal')">&times;</span>
+            <form action="/add-post" method="post">
+                <div class="form-group">
+                    <label for="title">Заголовок:</label>
+                    <input type="text" id="title" name="title" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="content">Содержание:</label>
+                    <textarea id="content" name="content" class="form-control" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Добавить пост</button>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="editPostModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('editPostModal')">&times;</span>
+            <form id="editPostForm" onsubmit="submitEditPostForm(); return false;">
+                <div class="form-group">
+                    <label for="editTitle">Заголовок:</label>
+                    <input type="text" id="editTitle" name="title" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="editContent">Содержание:</label>
+                    <textarea id="editContent" name="content" class="form-control" required></textarea>
+                </div>
+                <input type="hidden" id="editPostId" name="postId">
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+            </form>
+        </div>
+    </div>
+
+    
+
+    <script>
+        function showAddPostModal() {
+            document.getElementById('addPostModal').style.display = 'block';
+        }
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        function showEditPostModal(postId, title, content) {
+            document.getElementById('editTitle').value = title;
+            document.getElementById('editContent').value = content;
+            document.getElementById('editPostId').value = postId;
+            document.getElementById('editPostModal').style.display = 'block';
+        }
+        function submitEditPostForm() {
+            const postId = document.getElementById('editPostId').value;
+            const title = document.getElementById('editTitle').value;
+            const content = document.getElementById('editContent').value;
+    
+            fetch('/edit-post', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ postId, title, content }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    // Закрываем модальное окно
+                    closeModal('editPostModal');
+                    // Опционально: обновить пост на странице без перезагрузки
+                    console.log('Пост успешно обновлен');
+                    location.reload(); // Простой способ обновить страницу, чтобы отобразить изменения
+                } else {
+                    console.error('Ошибка при обновлении поста');
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+
+    <!-- Раздел для API -->
+    <div class="api-section container">
+        <h2 class="text-center">Визуализация Цен Криптовалют</h2>
+        <div class="chart-container">
+            <canvas id="cryptoChartBitcoin" class="crypto-chart"></canvas>
+            <canvas id="cryptoChartEthereum" class="crypto-chart"></canvas>
+            <canvas id="cryptoChartRipple" class="crypto-chart"></canvas>
+        </div>
+    </div>
+
+      <div class="api-section container">
+        <h2 class="text-center">Последние Новости Криптовалют</h2>
+        <div id="cryptoNews" class="news-container"></div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const apis = [
+                {id: 'bitcoin', canvas: 'cryptoChartBitcoin', color: 'rgb(255, 99, 132)'},
+                {id: 'ethereum', canvas: 'cryptoChartEthereum', color: 'rgb(54, 162, 235)'},
+                {id: 'ripple', canvas: 'cryptoChartRipple', color: 'rgb(255, 206, 86)'}
+            ];
+
+            apis.forEach(api => {
+                fetch(`https://api.coingecko.com/api/v3/coins/${api.id}/market_chart?vs_currency=usd&days=30`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const ctx = document.getElementById(api.canvas).getContext('2d');
+                        const prices = data.prices.map(p => p[1]);
+                        const dates = data.prices.map(p => new Date(p[0]).toLocaleDateString());
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: dates,
+                                datasets: [{
+                                    label: `${api.id} Price (USD)`,
+                                    data: prices,
+                                    borderColor: api.color,
+                                    fill: false,
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    xAxes: [{
+                                        type: 'time',
+                                        time: {
+                                            unit: 'day'
+                                        }
+                                    }],
+                                    yAxes: [{
+                                        ticks: {
+                                            beginAtZero: false
+                                        }
+                                    }]
+                                }
+                            }
+                        });
+                    })
+                    .catch(error => console.error('Error fetching data:', error));
+            });
+        });
+    </script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        fetch('https://min-api.cryptocompare.com/data/v2/news/?lang=EN')
+            .then(response => response.json())
+            .then(data => {
+                const newsContainer = document.getElementById('cryptoNews');
+                data.Data.forEach(news => {
+                    const newsElement = `
+                        <div class="card mb-3">
+                            <img class="card-img-top" src="${news.imageurl}" alt="${news.title}">
+                            <div class="card-body">
+                                <h5 class="card-title">${news.title}</h5>
+                                <p class="card-text">${news.body}</p>
+                                <a href="${news.url}" target="_blank" class="btn btn-primary">Читать полностью</a>
+                                <p class="card-text"><small class="text-muted">Источник: ${news.source}</small></p>
+                            </div>
+                        </div>`;
+                    newsContainer.innerHTML += newsElement;
+                });
+            })
+            .catch(error => {
+                console.error('Ошибка при получении данных с CryptoCompare:', error);
+            });
+    });
+</script>
+
+    <!-- Bootstrap JS и зависимости -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
